@@ -5,13 +5,14 @@ import type { Platform } from '@/types/database'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { platform: string } }
+  { params }: { params: Promise<{ platform: string }> }
 ) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
   const state = searchParams.get('state')
   const error = searchParams.get('error')
-  const platform = params.platform as Platform
+  const { platform: platformParam } = await params
+  const platform = platformParam as Platform
 
   // Handle OAuth errors
   if (error) {
