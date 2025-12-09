@@ -127,11 +127,61 @@ The codebase uses three distinct Supabase client patterns based on execution con
 
 ### Environment Variables
 
-Required for Supabase connection:
+**Required for all environments**:
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous/public key
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous/public key (safe to expose - protected by RLS)
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server-side only, never expose to client)
+- `NEXT_PUBLIC_APP_URL`: Application URL (e.g., http://localhost:3000 or https://your-app.vercel.app)
 
-Local development uses Supabase local instance (no remote env vars needed when running `supabase start`).
+**OAuth Credentials** (see OAuth Integration section for details):
+- `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`
+- `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`
+- `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`
+- `TIKTOK_CLIENT_ID`, `TIKTOK_CLIENT_SECRET`
+
+Local development uses Supabase local instance (remote Supabase env vars still needed for production features).
+
+### Production Deployment (Vercel)
+
+**Status**: ✅ Successfully deployed
+
+**Deployment Platform**: Vercel (connected to GitHub repository)
+
+**Production URLs**:
+- Main app: Check Vercel dashboard for current deployment URL
+- Privacy Policy: `/privacy`
+- Terms of Service: `/terms`
+- User Data Deletion: `/data-deletion`
+
+**Deployment Notes**:
+- Automatic deployments on push to `main` branch
+- Environment variables configured in Vercel dashboard (Settings → Environment Variables)
+- All environment variables must be set for "All Environments" (Production, Preview, Development)
+
+**Critical Configuration**:
+1. **Next.js 16 Compatibility**: The app uses Next.js 16, which has breaking changes:
+   - Dynamic route `params` are now async (must use `await params`)
+   - OAuth callback route at `src/app/api/oauth/callback/[platform]/route.ts` has been updated
+   - All route handlers with dynamic params must await the params Promise
+
+2. **Vercel Configuration**: `vercel.json` configured for optimal deployment
+   - Framework: Next.js (auto-detected)
+   - Build command: `npm run build`
+   - Region: iad1 (Washington DC)
+
+3. **Known Issues & Fixes**:
+   - TypeScript strict mode requires explicit return types for server actions
+   - Email field from Supabase auth can be `undefined`, convert to `null` for database consistency
+   - OAuth redirect URIs must match exactly between platform developer consoles and environment variables
+
+**Deployment Checklist**:
+- ✅ All TypeScript errors resolved
+- ✅ Environment variables configured
+- ✅ Build succeeds on Vercel
+- ✅ Middleware authentication working
+- ⏳ Supabase redirect URLs need updating with production URL
+- ⏳ Facebook/Meta app configuration needs production URLs (Privacy Policy, Terms, Data Deletion)
+- ⏳ OAuth redirect URIs need updating in platform developer consoles
 
 ### Local Development Setup
 
@@ -183,8 +233,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 **Getting OAuth Credentials**:
 - **Instagram/Facebook**: Create app at https://developers.facebook.com
+  - Requires: Privacy Policy URL, Terms of Service URL, User Data Deletion URL
+  - App Review required for production (public access)
+  - Facebook and Instagram share the same App ID and Secret
 - **YouTube**: Create project at https://console.cloud.google.com and enable YouTube Data API v3
+  - Create OAuth 2.0 credentials with authorized redirect URIs
 - **TikTok**: Register at https://developers.tiktok.com
+  - Comment API requires special permissions (not available to all developers)
 
 **Security Features**:
 - State parameter for CSRF protection
@@ -197,6 +252,54 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - Disconnect accounts (cascading delete removes associated comments/flags/cases)
 - Token expiration warnings
 - Confirmation dialog before disconnection
+
+### Legal & Policy Pages (Implemented)
+
+Required pages for OAuth app submission (especially Facebook/Meta) have been implemented:
+
+**Routes**:
+- `src/app/privacy/page.tsx` - Privacy Policy
+- `src/app/terms/page.tsx` - Terms of Service
+- `src/app/data-deletion/page.tsx` - User Data Deletion Instructions
+
+**Privacy Policy** (`/privacy`):
+- Data collection and usage explanation
+- Third-party service integrations (Supabase, OpenAI, social platforms)
+- Security measures (RLS, encryption, HTTPS)
+- GDPR rights (access, rectification, erasure, portability, objection)
+- Data retention policies
+- Contact information
+
+**Terms of Service** (`/terms`):
+- Service description and acceptable use policy
+- User account responsibilities
+- Social media integration terms
+- AI classification disclaimer (not legal advice)
+- Intellectual property rights
+- Limitation of liability
+- Governing law (Italy)
+
+**User Data Deletion** (`/data-deletion`):
+- Three deletion methods:
+  1. Self-service via dashboard settings (recommended)
+  2. Email request with verification
+  3. Individual social account disconnection
+- Complete data deletion details (what gets deleted)
+- Retention timeline (immediate marking, 30-day permanent deletion)
+- Instructions for revoking OAuth permissions per platform
+- GDPR compliance information
+
+**Key Features**:
+- Dynamic "Last updated" date using `new Date().toLocaleDateString()`
+- Responsive design with Tailwind CSS
+- Dark mode support via next-themes
+- Clear navigation back to home
+- Contact email for support: gianmarco.rnetti.design@gmail.com
+
+**Usage**:
+- Production URLs needed for Facebook/Meta app configuration
+- Required before app can go through App Review process
+- Must be publicly accessible (no authentication required)
 
 ### Comment Ingestion Pipeline (Implemented)
 
