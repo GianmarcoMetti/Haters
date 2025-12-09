@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PlatformCard } from '@/components/accounts/platform-card'
 import { ConnectedAccount } from '@/components/accounts/connected-account'
+import { SyncAllButton } from '@/components/accounts/sync-all-button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import type { SocialAccount } from '@/types/database'
@@ -34,11 +35,14 @@ export default async function AccountsPage({
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Social Accounts</h1>
-        <p className="text-muted-foreground mt-2">
-          Connect and manage your social media accounts
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Social Accounts</h1>
+          <p className="text-muted-foreground mt-2">
+            Connect and manage your social media accounts
+          </p>
+        </div>
+        {connectedAccounts.length > 0 && <SyncAllButton />}
       </div>
 
       {/* Success/Error Messages */}

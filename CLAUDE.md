@@ -198,20 +198,97 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - Token expiration warnings
 - Confirmation dialog before disconnection
 
+### Comment Ingestion Pipeline (Implemented)
+
+Automated comment fetching from connected social media accounts using platform APIs.
+
+**Architecture**:
+- `src/lib/social/types.ts` - Shared interfaces and types for all platforms
+- `src/lib/social/instagram-client.ts` - Instagram API client (Basic Display API)
+- `src/lib/social/facebook-client.ts` - Facebook API client (Graph API for Pages)
+- `src/lib/social/youtube-client.ts` - YouTube API client (Data API v3)
+- `src/lib/social/tiktok-client.ts` - TikTok API client (TikTok API v2)
+- `src/lib/social/ingestion-service.ts` - Coordinating service for all platforms
+- `src/lib/social/actions.ts` - Server actions for triggering syncs
+
+**Ingestion Flow**:
+1. User clicks "Sync" button on connected account or "Sync All Accounts"
+2. Server action validates OAuth token and checks expiration
+3. Platform-specific client fetches comments from recent posts/videos
+4. Raw comments transformed to standardized format
+5. Comments stored in database with deduplication (unique constraint on platform_comment_id + social_account_id)
+6. Results returned showing found/ingested/duplicate counts
+
+**Platform-Specific Details**:
+
+**Instagram**:
+- Fetches user's media (posts) via `/me/media`
+- For each post, fetches comments via `/{media-id}/comments`
+- Fields: id, text, username, timestamp
+- Limited to last 25 posts (configurable)
+
+**Facebook**:
+- Fetches Pages via `/me/accounts`
+- Gets Page posts with `/{ page-id}/posts`
+- For each post, fetches comments via `/{post-id}/comments`
+- Fields: id, message, from (name/id), created_time, permalink
+- Uses Page access token for API calls
+
+**YouTube**:
+- Gets user's channel via `/channels?mine=true`
+- Searches for channel videos via `/search?channelId=...`
+- Fetches comment threads via `/commentThreads?videoId=...`
+- Fields: id, textDisplay, authorDisplayName, publishedAt
+- Supports pagination, max 100 comments per request
+
+**TikTok**:
+- Fetches user's videos via `/video/list`
+- For each video, fetches comments via `/video/comment/list`
+- Note: Comment API requires special permissions (not available to all developers)
+- Fields: id, text, user_name, create_time
+
+**Deduplication**:
+- Database unique constraint on (social_account_id, platform_comment_id)
+- Prevents duplicate ingestion across multiple syncs
+- Returns count of duplicates in sync results
+
+**Error Handling**:
+- Token validation before fetching
+- Expiration checks with user-friendly messages
+- Per-post error handling (continues if one post fails)
+- Detailed error reporting in sync results
+
+**UI Features**:
+- Individual account sync buttons with loading states
+- "Sync All Accounts" button for batch processing
+- Real-time sync results (found/ingested/duplicates)
+- Sync statistics (total comments, last sync time)
+- Comments list page with pagination
+- Platform indicators and metadata display
+
+**Rate Limiting**:
+- Respects platform API quotas:
+  - Instagram: ~200 requests/hour
+  - Facebook: Varies by app/page
+  - YouTube: 10,000 units/day (100 requests ~= 100-400 units)
+  - TikTok: 1,000 requests/day
+- Configurable max pages/posts per sync
+- Error handling for rate limit errors
+
 ### Planned Features (Not Yet Implemented)
 
 Per README.md design:
 
 - **Token Refresh**: Automatic refresh of expired OAuth tokens
+- **Scheduled Syncs**: Cron jobs or background workers for automatic ingestion
 - **AI Service** (`src/lib/ai/`): OpenAI integration for comment classification (severity, category, confidence scoring)
   - Database schema ready: `flags` table with category, confidence_score, ai_reasoning fields
-- **Social Media API Clients** (`src/lib/social/`): Platform-specific API clients for fetching comments
-  - OAuth integration complete, ready for API implementation
-- **Comment Ingestion Pipeline**: System to fetch and store comments from connected social accounts
-  - Database schema ready: `comments` table with unique constraint to prevent duplicates
+  - Comment ingestion complete, ready for AI classification
 - **Admin UI**: Dashboard for legal partners to review cases
   - Database schema ready: `cases` table with assigned_to field for lawyer assignment
 - **Webhooks** (`supabase/functions/`): Real-time webhook handlers for social platform events
+- **Advanced Filtering**: Filter comments by date range, platform, keywords
+- **Bulk Operations**: Mark multiple comments as reviewed, export comments
 
 ### Key Design Principles
 
