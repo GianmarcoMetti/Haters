@@ -35,7 +35,7 @@ export default async function DashboardPage() {
   // Default stats if query fails
   const userStats: UserStatistics = stats || {
     user_id: user.id,
-    email: user.email,
+    email: user.email ?? null,
     connected_accounts: 0,
     total_comments: 0,
     total_flags: 0,
