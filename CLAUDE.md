@@ -140,22 +140,78 @@ Local development uses Supabase local instance (no remote env vars needed when r
 3. Access Supabase Studio at http://127.0.0.1:54323 for database management
 4. Email testing available at http://127.0.0.1:54324 (Inbucket)
 
+### OAuth Integration (Implemented)
+
+Social media account connection via OAuth 2.0 for Instagram, Facebook, YouTube, and TikTok.
+
+**Architecture**:
+- `src/lib/oauth/config.ts` - Platform configurations and OAuth URLs
+- `src/lib/oauth/actions.ts` - Server actions for initiating OAuth and managing accounts
+- `src/app/api/oauth/callback/[platform]/route.ts` - OAuth callback handler (dynamic route)
+- `src/components/accounts/` - UI components for account connection and management
+
+**OAuth Flow**:
+1. User clicks "Connect" on platform card
+2. Server action generates OAuth authorization URL with state parameter (CSRF protection)
+3. User redirected to platform's OAuth consent page
+4. Platform redirects back to `/api/oauth/callback/[platform]` with authorization code
+5. Callback route exchanges code for access token
+6. Token and platform user ID stored in `social_accounts` table
+7. User redirected to accounts page with success message
+
+**Environment Variables Required**:
+```bash
+# Instagram (Meta/Facebook)
+INSTAGRAM_CLIENT_ID=your_instagram_client_id
+INSTAGRAM_CLIENT_SECRET=your_instagram_client_secret
+
+# Facebook (Meta)
+FACEBOOK_CLIENT_ID=your_facebook_client_id
+FACEBOOK_CLIENT_SECRET=your_facebook_client_secret
+
+# YouTube (Google)
+YOUTUBE_CLIENT_ID=your_youtube_client_id
+YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
+
+# TikTok
+TIKTOK_CLIENT_ID=your_tiktok_client_id
+TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
+
+# App URL (for OAuth redirect URIs)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+**Getting OAuth Credentials**:
+- **Instagram/Facebook**: Create app at https://developers.facebook.com
+- **YouTube**: Create project at https://console.cloud.google.com and enable YouTube Data API v3
+- **TikTok**: Register at https://developers.tiktok.com
+
+**Security Features**:
+- State parameter for CSRF protection
+- Tokens stored server-side only (never exposed to client)
+- RLS policies ensure users can only access their own accounts
+- Token expiration tracking with `token_expires_at` field
+
+**Account Management**:
+- View connected accounts with platform info and connection date
+- Disconnect accounts (cascading delete removes associated comments/flags/cases)
+- Token expiration warnings
+- Confirmation dialog before disconnection
+
 ### Planned Features (Not Yet Implemented)
 
 Per README.md design:
 
+- **Token Refresh**: Automatic refresh of expired OAuth tokens
 - **AI Service** (`src/lib/ai/`): OpenAI integration for comment classification (severity, category, confidence scoring)
   - Database schema ready: `flags` table with category, confidence_score, ai_reasoning fields
-- **Social Media Connectors** (`src/lib/social/`): Adapter pattern for Instagram, Facebook, YouTube, TikTok APIs
-  - Database schema ready: `social_accounts` table supports all 4 platforms
-  - OAuth flows needed for each platform
+- **Social Media API Clients** (`src/lib/social/`): Platform-specific API clients for fetching comments
+  - OAuth integration complete, ready for API implementation
 - **Comment Ingestion Pipeline**: System to fetch and store comments from connected social accounts
   - Database schema ready: `comments` table with unique constraint to prevent duplicates
-- **User Dashboard**: Interface for reviewing AI flags and initiating cases
-  - Database views available: `user_statistics` for dashboard metrics
 - **Admin UI**: Dashboard for legal partners to review cases
   - Database schema ready: `cases` table with assigned_to field for lawyer assignment
-- **Edge Functions** (`supabase/functions/`): Webhook handlers for social platform events
+- **Webhooks** (`supabase/functions/`): Real-time webhook handlers for social platform events
 
 ### Key Design Principles
 
